@@ -22,6 +22,7 @@ main{max-width:1200px;margin:0 auto;padding:16px}.btn{border:1px solid var(--lin
 dialog{border:0;border-radius:10px;padding:20px;width:min(460px,92vw)}dialog::backdrop{background:#0007}dialog label{display:block;margin-top:10px;color:var(--mut)}dialog input,dialog select,dialog textarea{width:100%}
 #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:6px;display:none}
 .login{max-width:340px;margin:10vh auto;background:#fff;border:1px solid var(--line);border-radius:10px;padding:24px}.login input{width:100%}.login label{display:block;margin-top:10px;color:var(--mut)}#who{display:flex;gap:8px;align-items:center;font-size:13px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 12px}.bar+.bar{margin-top:4px}
+tr.ovd td{background:#FDECEA}tr.ovd td:first-child{box-shadow:inset 4px 0 var(--red)}tr.soon td{background:#FFF7E0}tr.soon td:first-child{box-shadow:inset 4px 0 var(--amb)}.it.ovd{background:#FDECEA;border-left:3px solid var(--red)}.it.soon{background:#FFF7E0;border-left:3px solid var(--amb)}.wn{display:inline-block;font-size:11px;padding:0 7px;border-radius:9px;color:#fff;white-space:nowrap}.wn.r{background:var(--red)}.wn.a{background:var(--amb)}
 @media(max-width:640px){.g2{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.c3{grid-template-columns:1fr}.cal>div{min-height:64px}}
 </style></head><body>
 <header><b>BẢNG QUẢN LÝ CÔNG VIỆC</b><nav id="nav"></nav><span id="who"></span></header>
@@ -32,7 +33,7 @@ dialog{border:0;border-radius:10px;padding:20px;width:min(460px,92vw)}dialog::ba
 <label>Mức ưu tiên<select name="UuTien"><option>Cao</option><option selected>Trung bình</option><option>Thấp</option></select></label>
 <label>Trạng thái<select name="TrangThai"><option>Chưa bắt đầu</option><option>Đang xử lý</option><option>Đã hoàn thành</option></select></label>
 <label>% xử lý tiến độ<input type="number" name="PhanTram" min="0" max="100" step="5" value="0"></label><label>Ghi chú tiến độ<textarea name="GhiChu" rows="2"></textarea></label><small class="mut" id="finfo"></small>
-<div style="display:flex;gap:8px;justify-content:space-between;margin-top:16px"><button type="button" class="btn dng" id="fdel" onclick="del()">Xóa</button><span><button type="button" class="btn" onclick="dlg.close()">Hủy</button> <button class="btn pri">Lưu</button></span></div></form></dialog>
+<div style="display:flex;gap:8px;justify-content:space-between;margin-top:16px"><button type="button" class="btn dng" id="fdel" onclick="del()">Xóa</button><span><button type="button" class="btn" onclick="dlg.close()">Hủy</button> <button class="btn pri" id="fsave">Lưu</button></span></div></form></dialog>
 <dialog id="dlg2"><form id="f2"><h3 id="ft2">Việc cố định</h3><input type="hidden" name="Ma">
 <label>Tên công việc<input name="TenViec" required></label><label>Người phụ trách (tự động giao)<select name="NguoiPhuTrach"></select></label>
 <label>Bộ phận<select name="BoPhan"></select></label><label>Mức ưu tiên<select name="UuTien"><option>Cao</option><option selected>Trung bình</option><option>Thấp</option></select></label>
@@ -63,7 +64,7 @@ const logout = () => { cred = null; sessionStorage.removeItem('cred'); S.ready =
 async function load() {
   if (!cred) return loginView();
   try {
-    const j = await api({action: 'list'}); Object.assign(S, {user: j.user, templates: j.templates || [], tasks: j.tasks, L: j.lists, today: j.today});
+    const j = await api({action: 'list'}); Object.assign(S, {user: j.user, templates: j.templates || [], tasks: j.tasks, L: j.lists, today: j.today}); S.all = j.tasks; if (!mgr()) S.tasks = j.tasks.filter(t => t.NguoiPhuTrach === j.user.name);
     if (!S.ready) { const t = new Date(j.today + 'T00:00:00'); S.ready = true; S.tab = 'tq'; S.rp = {m: 'tuần', o: 0, ng: ''};
       S.f = {from: fd(new Date(t.getFullYear(), t.getMonth(), 1)), to: fd(new Date(t.getFullYear(), t.getMonth() + 1, 0)), ng: mgr() ? (j.lists.nguoi[0] || '') : j.user.name}; S.cal = {y: t.getFullYear(), m: t.getMonth(), ng: ''}; }
     render();
@@ -85,15 +86,20 @@ function sum(l, title) {
 }
 const prog = t => `${t.PhanTram || 0}%<div class="bar"><i style="width:${t.PhanTram || 0}%;background:${CL[t.TrangThai]}"></i></div>`;
 const upd = t => t.CapNhatLuc ? `${t.CapNhatLuc.slice(11)} ${dm(t.CapNhatLuc.slice(0, 10)).slice(0, 5)}<br><small class="mut">${esc(t.CapNhatBoi)}</small>` : '<small class="mut">Chưa cập nhật</small>';
-const rowsT = l => `<div class="tw"><table style="min-width:980px"><thead><tr><th>Tên công việc</th><th>Hạn</th><th>Bộ phận</th><th>Người phụ trách</th><th>Ưu tiên</th><th>Trạng thái</th><th style="min-width:90px">% tiến độ</th><th>Cập nhật lúc</th><th>Ghi chú</th></tr></thead><tbody>${l.sort((a, b) => a.Han > b.Han ? 1 : -1).map(t => `<tr onclick="openF('${t.MaViec}')"><td><b>${esc(t.TenViec)}</b><br><small class="mut">Giao bởi ${esc(t.NguoiGiao)}</small></td><td class="${late(t) ? 'late' : ''}">${dm(t.Han)}${t.GioHan ? '<br><small class="mut">trước ' + t.GioHan + '</small>' : ''}</td><td>${esc(t.BoPhan)}</td><td>${esc(t.NguoiPhuTrach)}</td><td><span style="color:${PC[t.UuTien]}">●</span> ${t.UuTien}</td><td><span class="tag" style="color:${CL[t.TrangThai]}">${t.TrangThai}</span></td><td>${prog(t)}</td><td>${upd(t)}</td><td>${esc(t.GhiChu)}</td></tr>`).join('') || '<tr><td colspan="9" class="mut">Không có công việc.</td></tr>'}</tbody></table></div>`;
+const rowsT = l => `<div class="tw"><table style="min-width:980px"><thead><tr><th>Tên công việc</th><th>Hạn</th><th>Bộ phận</th><th>Người phụ trách</th><th>Ưu tiên</th><th>Trạng thái</th><th style="min-width:90px">% tiến độ</th><th>Cập nhật lúc</th><th>Ghi chú</th></tr></thead><tbody>${l.sort((a, b) => a.Han > b.Han ? 1 : -1).map(t => `<tr class="${rc(t)}" onclick="openF('${t.MaViec}')"><td><b>${esc(t.TenViec)}</b><br><small class="mut">Giao bởi ${esc(t.NguoiGiao)}</small></td><td class="${late(t) ? 'late' : ''}">${dm(t.Han)}${t.GioHan ? '<br><small class="mut">trước ' + t.GioHan + '</small>' : ''}${warn(t) ? '<br>' + warn(t) : ''}</td><td>${esc(t.BoPhan)}</td><td>${esc(t.NguoiPhuTrach)}</td><td><span style="color:${PC[t.UuTien]}">●</span> ${t.UuTien}</td><td><span class="tag" style="color:${CL[t.TrangThai]}">${t.TrangThai}</span></td><td>${prog(t)}</td><td>${upd(t)}</td><td>${esc(t.GhiChu)}</td></tr>`).join('') || '<tr><td colspan="9" class="mut">Không có công việc.</td></tr>'}</tbody></table></div>`;
 
-const alertBar = l => { const od = l.filter(late).length, dt = l.filter(t => t.TrangThai !== ST[0] && t.Han === S.today).length; return od || dt ? `<div class="panel" style="border-left:4px solid var(--red)">⚠ ${dt ? dt + ' việc đến hạn hôm nay' : ''}${dt && od ? ' · ' : ''}${od ? od + ' việc quá hạn' : ''}</div>` : ''; };
+const NEAR = 2; // gần hạn = còn tối đa 2 ngày
+const dleft = t => Math.round((new Date(t.Han + 'T00:00:00') - new Date(S.today + 'T00:00:00')) / 864e5);
+const rc = t => t.TrangThai === ST[0] || !t.Han ? '' : dleft(t) < 0 ? 'ovd' : dleft(t) <= NEAR ? 'soon' : '';
+const warn = t => { const c = rc(t); if (!c) return ''; const d = dleft(t); return c === 'ovd' ? `<span class="wn r">Quá hạn ${-d} ngày</span>` : `<span class="wn a">⚠ ${d === 0 ? 'Đến hạn hôm nay' : 'Còn ' + d + ' ngày'}</span>`; };
+const alertBar = (l, lb) => { const o = l.filter(t => rc(t) === 'ovd').length, n = l.filter(t => rc(t) === 'soon').length; return o || n ? `<div class="panel" style="border-left:4px solid ${o ? 'var(--red)' : 'var(--amb)'};padding:8px 14px;margin-bottom:8px">⚠ <b>${lb}</b>: ${o ? `<span class="late">${o} việc quá hạn</span>` : ''}${o && n ? ' · ' : ''}${n ? `<span style="color:var(--amb);font-weight:500">${n} việc sắp đến hạn (trong ${NEAR} ngày)</span>` : ''}</div>` : ''; };
 function tq() {
-  const f = S.f, inR = S.tasks.filter(t => t.Han >= f.from && t.Han <= f.to), who = mgr() ? f.ng : S.user.name, me = inR.filter(t => t.NguoiPhuTrach === who);
-  return `<div class="tools"><label>Từ ngày</label><input type="date" value="${f.from}" onchange="S.f.from=this.value;render()"><label>Đến ngày</label><input type="date" value="${f.to}" onchange="S.f.to=this.value;render()">${mgr() ? `<label>Người phụ trách</label><select onchange="S.f.ng=this.value;render()">${opt(S.L.nguoi, f.ng)}</select><button class="btn pri" onclick="openF()">+ Giao việc</button>` : ''}</div>
-  ${alertBar(S.tasks.filter(t => t.NguoiPhuTrach === who))}<div class="g2"><div class="panel">${sum(me, (mgr() ? 'THEO NGƯỜI PHỤ TRÁCH: ' : 'CÔNG VIỆC CỦA TÔI: ') + esc(who))}</div>${mgr() ? `<div class="panel">${sum(inR, 'CẢ TEAM')}</div>` : ''}</div>
-  <div class="panel"><div class="c3">${ST.map(s => `<div class="col"><h4 style="color:${CL[s]}">${s} (${cnt(me, 'TrangThai', s)})</h4>${me.filter(t => t.TrangThai === s).map(t => `<div class="it" onclick="openF('${t.MaViec}')"><span>${esc(t.TenViec)} <small>${t.PhanTram}%</small></span><small class="${late(t) ? 'late' : ''}">${dm(t.Han).slice(0, 5)}</small></div>`).join('') || '<small class="mut">Không có</small>'}</div>`).join('')}</div></div>
-  <h3>${mgr() ? 'CÔNG VIỆC CẢ TEAM' : 'DANH SÁCH CÔNG VIỆC'}</h3>${rowsT(mgr() ? inR : me)}`;
+  const f = S.f, inR = S.all.filter(t => t.Han >= f.from && t.Han <= f.to), who = f.ng, me = inR.filter(t => t.NguoiPhuTrach === who);
+  return `<div class="tools"><label>Từ ngày</label><input type="date" value="${f.from}" onchange="S.f.from=this.value;render()"><label>Đến ngày</label><input type="date" value="${f.to}" onchange="S.f.to=this.value;render()"><label>Người phụ trách</label><select onchange="S.f.ng=this.value;render()">${opt(S.L.nguoi, f.ng)}</select>${mgr() ? '<button class="btn pri" onclick="openF()">+ Giao việc</button>' : ''}</div>
+  ${alertBar(S.all, 'Cả team')}${alertBar(S.all.filter(t => t.NguoiPhuTrach === who), esc(who))}
+  <div class="g2"><div class="panel">${sum(me, 'THEO NGƯỜI PHỤ TRÁCH: ' + esc(who))}</div><div class="panel">${sum(inR, 'CẢ TEAM')}</div></div>
+  <div class="panel"><div class="c3">${ST.map(s => `<div class="col"><h4 style="color:${CL[s]}">${s} (${cnt(me, 'TrangThai', s)})</h4>${me.filter(t => t.TrangThai === s).map(t => `<div class="it ${rc(t)}" onclick="openF('${t.MaViec}')"><span>${esc(t.TenViec)} <small>${t.PhanTram}%</small></span><small class="${late(t) ? 'late' : ''}">${dm(t.Han).slice(0, 5)}</small></div>`).join('') || '<small class="mut">Không có</small>'}</div>`).join('')}</div></div>
+  <h3>CÔNG VIỆC CẢ TEAM</h3>${rowsT(inR)}<p class="mut">Dòng đỏ: quá hạn · Dòng vàng: sắp đến hạn (còn tối đa ${NEAR} ngày). Mọi người xem được toàn team, nhưng chỉ cập nhật được việc của mình.</p>`;
 }
 function ds() {
   const q = S.q, l = S.tasks.filter(t => (!q.s || t.TenViec.toLowerCase().includes(q.s.toLowerCase())) && (!q.ng || t.NguoiPhuTrach === q.ng) && (!q.tt || t.TrangThai === q.tt));
@@ -137,13 +143,15 @@ function bc() {
   <p class="mut">Chỉ tiêu = việc có hạn hoàn thành nằm trong kỳ. Việc chưa xong nhưng quá hạn được tính vào cả "Chưa hoàn thành" và "Quá hạn". Đúng hạn = hoàn thành (cập nhật lần cuối) không muộn hơn hạn.</p>`;
 }
 function openF(ma, han) {
-  const f = $('#f'), m = mgr(), t = S.tasks.find(x => x.MaViec === ma) || {TrangThai: 'Chưa bắt đầu', PhanTram: '0', UuTien: 'Trung bình', Han: han || S.today, NguoiPhuTrach: S.f.ng};
+  const f = $('#f'), m = mgr(), t = S.all.find(x => x.MaViec === ma) || {TrangThai: 'Chưa bắt đầu', PhanTram: '0', UuTien: 'Trung bình', Han: han || S.today, NguoiPhuTrach: S.f.ng};
   if (!ma && !m) return;
+  const own = m || t.NguoiPhuTrach === S.user.name;
   f.BoPhan.innerHTML = opt(S.L.bophan, t.BoPhan); f.NguoiPhuTrach.innerHTML = opt(S.L.nguoi, t.NguoiPhuTrach);
   ['MaViec','TenViec','Han','UuTien','TrangThai','PhanTram','GhiChu'].forEach(k => f[k].value = t[k] || (k === 'PhanTram' ? 0 : ''));
   ['TenViec','Han','BoPhan','NguoiPhuTrach','UuTien'].forEach(k => f[k].disabled = !m);
+  ['TrangThai','PhanTram','GhiChu'].forEach(k => f[k].disabled = !own); $('#fsave').style.display = own ? '' : 'none';
   $('#finfo').textContent = ma ? `Giao bởi ${t.NguoiGiao || '—'}${t.CapNhatLuc ? ' · Cập nhật lần cuối ' + t.CapNhatLuc.slice(11) + ' ' + dm(t.CapNhatLuc.slice(0, 10)) + ' bởi ' + t.CapNhatBoi : ''}` : '';
-  $('#ft').textContent = ma ? (m ? 'Sửa công việc' : 'Cập nhật tiến độ') : 'Giao việc mới'; $('#fdel').style.display = ma && m ? '' : 'none'; $('#dlg').showModal();
+  $('#ft').textContent = ma ? (m ? 'Sửa công việc' : own ? 'Cập nhật tiến độ' : 'Xem công việc') : 'Giao việc mới'; $('#fdel').style.display = ma && m ? '' : 'none'; $('#dlg').showModal();
 }
 $('#f').addEventListener('change', e => { const f = e.currentTarget;
   if (e.target === f.TrangThai) { const v = f.TrangThai.value; if (v === ST[0]) f.PhanTram.value = 100; else if (v === ST[2]) f.PhanTram.value = 0; else if (+f.PhanTram.value === 0 || +f.PhanTram.value === 100) f.PhanTram.value = 10; }
