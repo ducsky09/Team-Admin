@@ -22,7 +22,7 @@ main{max-width:1200px;margin:0 auto;padding:16px}.btn{border:1px solid var(--lin
 dialog{border:0;border-radius:10px;padding:20px;width:min(460px,92vw)}dialog::backdrop{background:#0007}dialog label{display:block;margin-top:10px;color:var(--mut)}dialog input,dialog select,dialog textarea{width:100%}
 #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:6px;display:none}
 .login{max-width:340px;margin:10vh auto;background:#fff;border:1px solid var(--line);border-radius:10px;padding:24px}.login input{width:100%}.login label{display:block;margin-top:10px;color:var(--mut)}#who{display:flex;gap:8px;align-items:center;font-size:13px}.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 12px}.bar+.bar{margin-top:4px}
-tr.ovd td{background:#FDECEA}tr.ovd td:first-child{box-shadow:inset 4px 0 var(--red)}tr.soon td{background:#FFF7E0}tr.soon td:first-child{box-shadow:inset 4px 0 var(--amb)}.it.ovd{background:#FDECEA;border-left:3px solid var(--red)}.it.soon{background:#FFF7E0;border-left:3px solid var(--amb)}.wn{display:inline-block;font-size:11px;padding:0 7px;border-radius:9px;color:#fff;white-space:nowrap}.wn.r{background:var(--red)}.wn.a{background:var(--amb)}
+tr.ovd td{background:#FDECEA}tr.ovd td:first-child{box-shadow:inset 4px 0 var(--red)}tr.soon td{background:#FFF7E0}tr.soon td:first-child{box-shadow:inset 4px 0 var(--amb)}.it.ovd{background:#FDECEA;border-left:3px solid var(--red)}.it.soon{background:#FFF7E0;border-left:3px solid var(--amb)}.wn{display:inline-block;font-size:11px;padding:0 7px;border-radius:9px;color:#fff;white-space:nowrap}.wn.r{background:var(--red)}.wn.a{background:var(--amb)}.wn.n{background:var(--blu)}
 @media(max-width:640px){.g2{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.c3{grid-template-columns:1fr}.cal>div{min-height:64px}}
 </style></head><body>
 <header><b>BẢNG QUẢN LÝ CÔNG VIỆC</b><nav id="nav"></nav><span id="who"></span></header>
@@ -64,7 +64,7 @@ const logout = () => { cred = null; sessionStorage.removeItem('cred'); S.ready =
 async function load() {
   if (!cred) return loginView();
   try {
-    const j = await api({action: 'list'}); Object.assign(S, {user: j.user, templates: j.templates || [], tasks: j.tasks, L: j.lists, today: j.today}); S.all = j.tasks; if (!mgr()) S.tasks = j.tasks.filter(t => t.NguoiPhuTrach === j.user.name);
+    const j = await api({action: 'list'}); Object.assign(S, {user: j.user, templates: j.templates || [], tasks: j.tasks, L: j.lists, today: j.today}); S.all = j.tasks; if (!mgr()) S.tasks = j.tasks.filter(t => t.NguoiPhuTrach === j.user.name); S.arch = j.archived || []; S.hist = S.tasks.concat(mgr() ? S.arch : S.arch.filter(t => t.NguoiPhuTrach === j.user.name));
     if (!S.ready) { const t = new Date(j.today + 'T00:00:00'); S.ready = true; S.tab = 'tq'; S.rp = {m: 'tuần', o: 0, ng: ''};
       S.f = {from: fd(new Date(t.getFullYear(), t.getMonth(), 1)), to: fd(new Date(t.getFullYear(), t.getMonth() + 1, 0)), ng: mgr() ? (j.lists.nguoi[0] || '') : j.user.name}; S.cal = {y: t.getFullYear(), m: t.getMonth(), ng: ''}; }
     render();
@@ -72,9 +72,9 @@ async function load() {
 }
 async function post(o, msg) { try { await api(o); toast(msg || 'Đã lưu'); await load(); } catch (e) { toast(e.message); } }
 function render() {
-  $('#nav').innerHTML = [['tq','Tổng quan'],['ds','Danh sách công việc'],['lich','Lịch'],['bc','Dashboard']].concat(mgr() ? [['cd','Việc cố định']] : []).map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" onclick="S.tab='${k}';render()">${l}</button>`).join('');
+  $('#nav').innerHTML = [['tq','Tổng quan'],['ds','Danh sách công việc'],['lich','Lịch'],['bc','Dashboard'],['lt','Lưu trữ']].concat(mgr() ? [['cd','Việc cố định']] : []).map(([k, l]) => `<button class="${S.tab === k ? 'on' : ''}" onclick="S.tab='${k}';render()">${l}</button>`).join('');
   $('#who').innerHTML = `${esc(S.user.name)} · ${mgr() ? 'Quản lý' : 'Nhân viên'} <button class="btn" onclick="load()">Làm mới</button><button class="btn" onclick="logout()">Thoát</button>`;
-  $('#app').innerHTML = {tq, ds, lich, bc, cd}[S.tab]();
+  $('#app').innerHTML = {tq, ds, lich, bc, lt, cd}[S.tab]();
 }
 const opt = (a, v, all) => (all !== undefined ? `<option value="">${all}</option>` : '') + a.map(x => `<option ${x === v ? 'selected' : ''}>${esc(x)}</option>`).join('');
 
@@ -86,20 +86,35 @@ function sum(l, title) {
 }
 const prog = t => `${t.PhanTram || 0}%<div class="bar"><i style="width:${t.PhanTram || 0}%;background:${CL[t.TrangThai]}"></i></div>`;
 const upd = t => t.CapNhatLuc ? `${t.CapNhatLuc.slice(11)} ${dm(t.CapNhatLuc.slice(0, 10)).slice(0, 5)}<br><small class="mut">${esc(t.CapNhatBoi)}</small>` : '<small class="mut">Chưa cập nhật</small>';
-const rowsT = l => `<div class="tw"><table style="min-width:980px"><thead><tr><th>Tên công việc</th><th>Hạn</th><th>Bộ phận</th><th>Người phụ trách</th><th>Ưu tiên</th><th>Trạng thái</th><th style="min-width:90px">% tiến độ</th><th>Cập nhật lúc</th><th>Ghi chú</th></tr></thead><tbody>${l.sort((a, b) => a.Han > b.Han ? 1 : -1).map(t => `<tr class="${rc(t)}" onclick="openF('${t.MaViec}')"><td><b>${esc(t.TenViec)}</b><br><small class="mut">Giao bởi ${esc(t.NguoiGiao)}</small></td><td class="${late(t) ? 'late' : ''}">${dm(t.Han)}${t.GioHan ? '<br><small class="mut">trước ' + t.GioHan + '</small>' : ''}${warn(t) ? '<br>' + warn(t) : ''}</td><td>${esc(t.BoPhan)}</td><td>${esc(t.NguoiPhuTrach)}</td><td><span style="color:${PC[t.UuTien]}">●</span> ${t.UuTien}</td><td><span class="tag" style="color:${CL[t.TrangThai]}">${t.TrangThai}</span></td><td>${prog(t)}</td><td>${upd(t)}</td><td>${esc(t.GhiChu)}</td></tr>`).join('') || '<tr><td colspan="9" class="mut">Không có công việc.</td></tr>'}</tbody></table></div>`;
+const rowsT = l => `<div class="tw"><table style="min-width:980px"><thead><tr><th>Tên công việc</th><th>Hạn</th><th>Bộ phận</th><th>Người phụ trách</th><th>Ưu tiên</th><th>Trạng thái</th><th style="min-width:90px">% tiến độ</th><th>Cập nhật lúc</th><th>Ghi chú</th></tr></thead><tbody>${l.sort(byPri).map(t => `<tr class="${rc(t)}" onclick="openF('${t.MaViec}')"><td><b>${esc(t.TenViec)}</b>${newTag(t)}<br><small class="mut">Giao bởi ${esc(t.NguoiGiao)}</small></td><td class="${late(t) ? 'late' : ''}">${dm(t.Han)}${t.GioHan ? '<br><small class="mut">trước ' + t.GioHan + '</small>' : ''}${warn(t) ? '<br>' + warn(t) : ''}</td><td>${esc(t.BoPhan)}</td><td>${esc(t.NguoiPhuTrach)}</td><td><span style="color:${PC[t.UuTien]}">●</span> ${t.UuTien}</td><td><span class="tag" style="color:${CL[t.TrangThai]}">${t.TrangThai}</span></td><td>${prog(t)}</td><td>${upd(t)}</td><td>${esc(t.GhiChu)}</td></tr>`).join('') || '<tr><td colspan="9" class="mut">Không có công việc.</td></tr>'}</tbody></table></div>`;
 
 const NEAR = 2; // gần hạn = còn tối đa 2 ngày
 const dleft = t => Math.round((new Date(t.Han + 'T00:00:00') - new Date(S.today + 'T00:00:00')) / 864e5);
 const rc = t => t.TrangThai === ST[0] || !t.Han ? '' : dleft(t) < 0 ? 'ovd' : dleft(t) <= NEAR ? 'soon' : '';
 const warn = t => { const c = rc(t); if (!c) return ''; const d = dleft(t); return c === 'ovd' ? `<span class="wn r">Quá hạn ${-d} ngày</span>` : `<span class="wn a">⚠ ${d === 0 ? 'Đến hạn hôm nay' : 'Còn ' + d + ' ngày'}</span>`; };
+const NEW_DAYS = 1; // việc giao trong hôm nay/hôm qua = "mới phát sinh"
+const addD = (d, n) => fd(new Date(new Date(d + 'T00:00:00').getTime() + n * 864e5));
+const isNew = t => t.NgayGiao && t.NgayGiao >= addD(S.today, -NEW_DAYS);
+const newTag = t => isNew(t) && t.TrangThai !== ST[0] ? ' <span class="wn n">Mới</span>' : '';
+const rank = t => t.TrangThai === ST[0] ? 4 : rc(t) === 'ovd' ? 0 : rc(t) === 'soon' ? 1 : isNew(t) ? 2 : 3;
+// thứ tự: quá hạn → gần hạn → mới phát sinh → còn lại (theo hạn) → đã hoàn thành
+const byPri = (a, b) => rank(a) - rank(b) || (rank(a) === 2 ? (a.NgayGiao < b.NgayGiao ? 1 : a.NgayGiao > b.NgayGiao ? -1 : 0) : 0) || (a.Han > b.Han ? 1 : a.Han < b.Han ? -1 : 0);
 const alertBar = (l, lb) => { const o = l.filter(t => rc(t) === 'ovd').length, n = l.filter(t => rc(t) === 'soon').length; return o || n ? `<div class="panel" style="border-left:4px solid ${o ? 'var(--red)' : 'var(--amb)'};padding:8px 14px;margin-bottom:8px">⚠ <b>${lb}</b>: ${o ? `<span class="late">${o} việc quá hạn</span>` : ''}${o && n ? ' · ' : ''}${n ? `<span style="color:var(--amb);font-weight:500">${n} việc sắp đến hạn (trong ${NEAR} ngày)</span>` : ''}</div>` : ''; };
 function tq() {
-  const f = S.f, inR = S.all.filter(t => t.Han >= f.from && t.Han <= f.to), who = f.ng, me = inR.filter(t => t.NguoiPhuTrach === who);
+  const f = S.f, rng = t => t.Han >= f.from && t.Han <= f.to, who = f.ng, mine = t => t.NguoiPhuTrach === who, aR = S.arch.filter(rng);
+  const inR = S.all.filter(rng), inA = inR.concat(aR), me = inR.filter(mine), meA = inA.filter(mine), nMe = aR.filter(mine).length;
   return `<div class="tools"><label>Từ ngày</label><input type="date" value="${f.from}" onchange="S.f.from=this.value;render()"><label>Đến ngày</label><input type="date" value="${f.to}" onchange="S.f.to=this.value;render()"><label>Người phụ trách</label><select onchange="S.f.ng=this.value;render()">${opt(S.L.nguoi, f.ng)}</select>${mgr() ? '<button class="btn pri" onclick="openF()">+ Giao việc</button>' : ''}</div>
-  ${alertBar(S.all, 'Cả team')}${alertBar(S.all.filter(t => t.NguoiPhuTrach === who), esc(who))}
-  <div class="g2"><div class="panel">${sum(me, 'THEO NGƯỜI PHỤ TRÁCH: ' + esc(who))}</div><div class="panel">${sum(inR, 'CẢ TEAM')}</div></div>
-  <div class="panel"><div class="c3">${ST.map(s => `<div class="col"><h4 style="color:${CL[s]}">${s} (${cnt(me, 'TrangThai', s)})</h4>${me.filter(t => t.TrangThai === s).map(t => `<div class="it ${rc(t)}" onclick="openF('${t.MaViec}')"><span>${esc(t.TenViec)} <small>${t.PhanTram}%</small></span><small class="${late(t) ? 'late' : ''}">${dm(t.Han).slice(0, 5)}</small></div>`).join('') || '<small class="mut">Không có</small>'}</div>`).join('')}</div></div>
-  <h3>CÔNG VIỆC CẢ TEAM</h3>${rowsT(inR)}<p class="mut">Dòng đỏ: quá hạn · Dòng vàng: sắp đến hạn (còn tối đa ${NEAR} ngày). Mọi người xem được toàn team, nhưng chỉ cập nhật được việc của mình.</p>`;
+  ${alertBar(S.all, 'Cả team')}${alertBar(S.all.filter(mine), esc(who))}
+  <div class="g2"><div class="panel">${sum(meA, 'THEO NGƯỜI PHỤ TRÁCH: ' + esc(who))}</div><div class="panel">${sum(inA, 'CẢ TEAM')}</div></div>
+  <div class="panel"><div class="c3">${ST.map(s => `<div class="col"><h4 style="color:${CL[s]}">${s} (${cnt(meA, 'TrangThai', s)})</h4>${me.filter(t => t.TrangThai === s).sort(byPri).map(t => `<div class="it ${rc(t)}" onclick="openF('${t.MaViec}')"><span>${esc(t.TenViec)}${newTag(t)} <small>${t.PhanTram}%</small></span><small class="${late(t) ? 'late' : ''}">${dm(t.Han).slice(0, 5)}</small></div>`).join('') || '<small class="mut">Không có</small>'}${s === ST[0] && nMe ? `<small class="mut">+ ${nMe} việc đã lưu trữ (tab Lưu trữ)</small>` : ''}</div>`).join('')}</div></div>
+  <h3>CÔNG VIỆC CẢ TEAM</h3>${rowsT(inR)}<p class="mut">Thứ tự: quá hạn (đỏ) → sắp đến hạn (vàng, còn tối đa ${NEAR} ngày) → mới phát sinh → còn lại theo hạn → đã hoàn thành. Việc hoàn thành từ hôm trước được lưu trữ sang tab Lưu trữ${aR.length ? ` (${aR.length} việc trong kỳ này)` : ''}. Mọi người xem được toàn team, nhưng chỉ cập nhật được việc của mình.</p>`;
+}
+function lt() {
+  S.lq = S.lq || {s: '', ng: ''}; const q = S.lq, base = mgr() ? S.arch : S.arch.filter(t => t.NguoiPhuTrach === S.user.name);
+  const l = base.filter(t => (!q.s || t.TenViec.toLowerCase().includes(q.s.toLowerCase())) && (!q.ng || t.NguoiPhuTrach === q.ng)).sort((a, b) => a.CapNhatLuc < b.CapNhatLuc ? 1 : -1);
+  return `<div class="tools"><input placeholder="Tìm việc đã lưu trữ" value="${esc(q.s)}" onchange="S.lq.s=this.value;render()">${mgr() ? `<select onchange="S.lq.ng=this.value;render()">${opt(S.L.nguoi, q.ng, 'Mọi người')}</select>` : ''}<span class="mut">${base.length} việc đã lưu trữ${l.length > 300 ? ' · hiển thị 300 việc mới nhất' : ''}</span></div>
+  <div class="tw"><table style="min-width:900px"><thead><tr><th>Tên công việc</th><th>Hạn</th><th>Người phụ trách</th><th>Bộ phận</th><th>Ưu tiên</th><th>Hoàn thành lúc</th><th>Ghi chú</th><th>Ngày lưu trữ</th></tr></thead><tbody>${l.slice(0, 300).map(t => `<tr style="cursor:default"><td><b>${esc(t.TenViec)}</b><br><small class="mut">Giao bởi ${esc(t.NguoiGiao)}</small></td><td>${dm(t.Han)}</td><td>${esc(t.NguoiPhuTrach)}</td><td>${esc(t.BoPhan)}</td><td>${t.UuTien}</td><td>${upd(t)}</td><td>${esc(t.GhiChu)}</td><td>${dm(t.LuuTru)}</td></tr>`).join('') || '<tr><td colspan="8" class="mut">Chưa có việc lưu trữ.</td></tr>'}</tbody></table></div>
+  <p class="mut">Việc "Đã hoàn thành" từ hôm trước được tự động chuyển sang tab "Lưu trữ" trong Google Sheet để danh sách làm việc gọn hơn. Số liệu vẫn được tính trong Tổng quan và Dashboard.</p>`;
 }
 function ds() {
   const q = S.q, l = S.tasks.filter(t => (!q.s || t.TenViec.toLowerCase().includes(q.s.toLowerCase())) && (!q.ng || t.NguoiPhuTrach === q.ng) && (!q.tt || t.TrangThai === q.tt));
@@ -122,7 +137,7 @@ function range() {
   return {a: fd(a), b: fd(b), A: a, B: b, lb};
 }
 function bc() {
-  const R = range(), m = S.rp.m, sel = mgr() ? S.rp.ng : '', names = mgr() ? S.L.nguoi : [S.user.name], inR = S.tasks.filter(t => t.Han >= R.a && t.Han <= R.b), list = sel ? inR.filter(t => t.NguoiPhuTrach === sel) : inR;
+  const R = range(), m = S.rp.m, sel = mgr() ? S.rp.ng : '', names = mgr() ? S.L.nguoi : [S.user.name], inR = S.hist.filter(t => t.Han >= R.a && t.Han <= R.b), list = sel ? inR.filter(t => t.NguoiPhuTrach === sel) : inR;
   const avg = l => l.length ? Math.round(l.reduce((x, t) => x + (+t.PhanTram || 0), 0) / l.length) : 0, ot = l => l.filter(t => t.TrangThai === ST[0] && t.CapNhatLuc && t.CapNhatLuc.slice(0, 10) <= t.Han).length;
   const rows = names.map(n => { const x = inR.filter(t => t.NguoiPhuTrach === n), d = cnt(x, 'TrangThai', ST[0]); return {n, tot: x.length, d, o: x.length - d, l: x.filter(late).length, ot: ot(x), av: avg(x)}; });
   const D = cnt(inR, 'TrangThai', ST[0]), bk = [];
